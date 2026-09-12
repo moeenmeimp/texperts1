@@ -1,9 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { PlusCircle, Search } from "lucide-react";
+import { PlusCircle, Search, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
+import { BannerAdSlot } from "@/components/BannerAdSlot";
 import { PostCard } from "@/components/PostCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,10 +12,12 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   CATEGORIES,
   isProfileComplete,
+  useBannerAds,
   useIsAdmin,
   usePosts,
   useProfile,
   useSession,
+  useSiteSettings,
   type Post,
 } from "@/lib/data";
 
@@ -25,7 +28,7 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "Live commodity rates plus a fast B2B feed of yarn, cotton and fabric offers. Search by category and city, then contact traders on WhatsApp.",
+          "Live commodity rates plus split feeds of selling offers and buying requirements for yarn, cotton and fabric. Search by category and city, then contact traders on WhatsApp.",
       },
       { property: "og:title", content: "TradeHub | B2B Yarn, Cotton & Fabric Marketplace" },
       {
@@ -45,11 +48,18 @@ function FeedPage() {
   const { data: profile } = useProfile(user?.id);
   const { data: isAdmin } = useIsAdmin(user?.id);
   const { data: posts = [], isLoading } = usePosts();
+  const { data: settings } = useSiteSettings();
+  const { data: ads = [] } = useBannerAds();
   const queryClient = useQueryClient();
 
   const [term, setTerm] = useState("");
   const [category, setCategory] = useState<string>("All");
   const [city, setCity] = useState<string>("All");
+
+  const adsOn = settings?.ads_enabled !== false;
+  const activeAds = useMemo(() => (adsOn ? ads.filter((ad) => ad.is_active) : []), [ads, adsOn]);
+  const feedAds = activeAds.filter((ad) => ad.placement !== "sidebar");
+  const sidebarAds = activeAds.filter((ad) => ad.placement === "sidebar");
 
   const cities = useMemo(() => {
     const set = new Set<string>();
@@ -80,6 +90,9 @@ function FeedPage() {
     });
   }, [posts, term, category, city]);
 
+  const selling = filtered.filter((post) => post.post_type !== "buy");
+  const buying = filtered.filter((post) => post.post_type === "buy");
+
   async function togglePin(post: Post) {
     const { error } = await supabase
       .from("posts")
@@ -102,6 +115,78 @@ function FeedPage() {
     await queryClient.invalidateQueries({ queryKey: ["posts"] });
   }
 
+  function Column({
+    title,
+    tone,
+    items,
+    emptyText,
+  }: {
+    title: string;
+    tone: "sell" | "buy";
+    items: Post[];
+    emptyText: string;
+  }) {
+    const pinned = items.filter((post) => post.is_pinned);
+    const rest = items.filter((post) => !post.is_pinned);
+    const ad = tone === "sell" ? feedAds[0] : feedAds[1];
+
+    return (
+      <section className="min-w-0">
+        <header className="sticky top-[104px] z-10 mb-3 flex items-center justify-between rounded-xl bg-background/95 py-1 backdrop-blur">
+          <h2 className="flex items-center gap-2 text-sm font-extrabold tracking-tight">
+            <span
+              className={`rounded-full px-2.5 py-1 text-[11px] font-bold tracking-wide uppercase ${
+                tone === "sell" ? "bg-success/15 text-success" : "bg-info/15 text-info"
+              }`}
+            >
+              {title}
+            </span>
+          </h2>
+          <span className="text-xs text-muted-foreground">{items.length}</span>
+        </header>
+
+        {pinned.length > 0 ? (
+          <div className="mb-3 space-y-3 rounded-2xl border border-warning/40 bg-warning/5 p-3">
+            <p className="flex items-center gap-1.5 text-[11px] font-bold tracking-widest text-muted-foreground uppercase">
+              <Sparkles className="h-3.5 w-3.5" /> Sponsored / Featured
+            </p>
+            {pinned.map((post) => (
+              <PostCard
+                key={post.id}
+                post={post}
+                isAdmin={isAdmin}
+                onTogglePin={togglePin}
+                onDelete={deletePost}
+              />
+            ))}
+          </div>
+        ) : null}
+
+        <div className="space-y-3">
+          {rest.length === 0 && pinned.length === 0 ? (
+            <div className="rounded-2xl bg-card p-6 text-center shadow-card">
+              <p className="text-sm font-semibold">{emptyText}</p>
+              <Button asChild size="sm" className="mt-3">
+                <Link to="/new">Create a post</Link>
+              </Button>
+            </div>
+          ) : null}
+          {rest.map((post, index) => (
+            <div key={post.id} className="space-y-3">
+              <PostCard
+                post={post}
+                isAdmin={isAdmin}
+                onTogglePin={togglePin}
+                onDelete={deletePost}
+              />
+              {ad && index === 2 ? <BannerAdSlot ad={ad} /> : null}
+            </div>
+          ))}
+        </div>
+      </section>
+    );
+  }
+
   return (
     <AppShell>
       {user && !isProfileComplete(profile) ? (
@@ -113,14 +198,14 @@ function FeedPage() {
         </div>
       ) : null}
 
-      <div className="sticky top-[60px] z-20 -mx-3 bg-background/95 px-3 pt-1 pb-3 backdrop-blur">
+      <div className="sticky top-[64px] z-20 -mx-3 bg-background/95 px-3 pt-1 pb-3 backdrop-blur">
         <div className="relative">
           <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={term}
             onChange={(e) => setTerm(e.target.value)}
             placeholder="Search item, company, rate…"
-            className="bg-card pl-9"
+            className="h-11 bg-card pl-9"
             aria-label="Search posts"
           />
         </div>
@@ -155,31 +240,34 @@ function FeedPage() {
         </div>
       </div>
 
-      <div className="mt-3 space-y-3">
-        {isLoading ? (
-          <p className="text-sm text-muted-foreground">Loading feed…</p>
-        ) : filtered.length === 0 ? (
-          <div className="rounded-2xl bg-card p-8 text-center shadow-card">
-            <p className="font-semibold">No posts yet</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Be the first to share a yarn, cotton or fabric offer.
-            </p>
-            <Button asChild className="mt-4">
-              <Link to="/new">Create a post</Link>
-            </Button>
-          </div>
-        ) : (
-          filtered.map((post) => (
-            <PostCard
-              key={post.id}
-              post={post}
-              isAdmin={isAdmin}
-              onTogglePin={togglePin}
-              onDelete={deletePost}
-            />
-          ))
-        )}
-      </div>
+      {isLoading ? (
+        <p className="mt-3 text-sm text-muted-foreground">Loading feed…</p>
+      ) : (
+        <div className="mt-3 grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_18rem]">
+          <Column
+            title="Active selling offers"
+            tone="sell"
+            items={selling}
+            emptyText="No selling offers match your filters."
+          />
+          <Column
+            title="Buying requirements"
+            tone="buy"
+            items={buying}
+            emptyText="No buying requirements match your filters."
+          />
+          {sidebarAds.length > 0 ? (
+            <aside className="hidden space-y-3 lg:block">
+              <p className="text-[11px] font-bold tracking-widest text-muted-foreground uppercase">
+                Promotions
+              </p>
+              {sidebarAds.map((ad) => (
+                <BannerAdSlot key={ad.id} ad={ad} />
+              ))}
+            </aside>
+          ) : null}
+        </div>
+      )}
 
       <Button
         asChild
