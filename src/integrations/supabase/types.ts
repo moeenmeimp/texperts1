@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      banner_ads: {
+        Row: {
+          accent: string
+          created_at: string
+          cta_text: string
+          cta_url: string
+          id: string
+          is_active: boolean
+          placement: string
+          sort_order: number
+          subtitle: string
+          title: string
+        }
+        Insert: {
+          accent?: string
+          created_at?: string
+          cta_text?: string
+          cta_url?: string
+          id?: string
+          is_active?: boolean
+          placement?: string
+          sort_order?: number
+          subtitle?: string
+          title: string
+        }
+        Update: {
+          accent?: string
+          created_at?: string
+          cta_text?: string
+          cta_url?: string
+          id?: string
+          is_active?: boolean
+          placement?: string
+          sort_order?: number
+          subtitle?: string
+          title?: string
+        }
+        Relationships: []
+      }
       comments: {
         Row: {
           body: string
@@ -94,6 +133,7 @@ export type Database = {
           id: string
           image_path: string | null
           is_pinned: boolean
+          post_type: string
           quantity: string
           rate: string
           title: string
@@ -106,6 +146,7 @@ export type Database = {
           id?: string
           image_path?: string | null
           is_pinned?: boolean
+          post_type?: string
           quantity?: string
           rate?: string
           title: string
@@ -118,6 +159,7 @@ export type Database = {
           id?: string
           image_path?: string | null
           is_pinned?: boolean
+          post_type?: string
           quantity?: string
           rate?: string
           title?: string
@@ -171,6 +213,7 @@ export type Database = {
       }
       site_settings: {
         Row: {
+          ads_enabled: boolean
           brand_name: string
           header_text: string
           id: number
@@ -179,6 +222,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          ads_enabled?: boolean
           brand_name?: string
           header_text?: string
           id?: number
@@ -187,6 +231,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          ads_enabled?: boolean
           brand_name?: string
           header_text?: string
           id?: number
