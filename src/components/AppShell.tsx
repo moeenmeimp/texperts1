@@ -38,6 +38,10 @@ export function AppShell({ children }: { children: ReactNode }) {
   const path = useRouterState({ select: (s) => s.location.pathname });
   usePalette(settings?.theme);
 
+  useEffect(() => {
+    if (settings?.site_title) document.title = settings.site_title;
+  }, [settings?.site_title]);
+
   const brand = settings?.brand_name ?? "TradeHub";
 
   return (
