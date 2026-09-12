@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Building2, MapPin, MessageCircle, Phone, Pin, Trash2 } from "lucide-react";
+import { Building2, MapPin, MessageCircle, Phone, Pin, Sparkles, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { timeAgo, useSignedImage, whatsappLink, type Post } from "@/lib/data";
@@ -31,10 +31,29 @@ export function PostCard({
   showImage?: boolean;
 }) {
   const poster = post.profiles;
+  const isBuying = post.post_type === "buy";
   const message = `Hello ${poster?.full_name ?? ""}, I saw your ${post.category} post "${post.title}" and would like to discuss.`;
 
   return (
-    <article className="rounded-2xl bg-card p-4 shadow-card">
+    <article
+      className={`rounded-2xl bg-card p-4 shadow-card ring-1 transition-shadow hover:shadow-lg ${
+        post.is_pinned ? "ring-warning/50" : "ring-border/60"
+      }`}
+    >
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <span
+          className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-bold tracking-wide uppercase ${
+            isBuying ? "bg-info/15 text-info" : "bg-success/15 text-success"
+          }`}
+        >
+          {isBuying ? "Requirement" : "Selling"}
+        </span>
+        {post.is_pinned ? (
+          <span className="inline-flex items-center gap-1 rounded-full bg-warning/20 px-2.5 py-0.5 text-[11px] font-bold tracking-wide text-foreground uppercase">
+            <Sparkles className="h-3 w-3" /> Sponsored / Featured
+          </span>
+        ) : null}
+      </div>
       <div className="flex items-start gap-3">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-bubble text-sm font-bold text-accent-foreground">
           {(poster?.full_name || "?").charAt(0).toUpperCase()}
@@ -57,12 +76,6 @@ export function PostCard({
           <span className="text-[11px] text-muted-foreground">{timeAgo(post.created_at)}</span>
         </div>
       </div>
-
-      {post.is_pinned ? (
-        <p className="mt-2 inline-flex items-center gap-1 rounded-md bg-accent px-2 py-0.5 text-[11px] font-semibold text-accent-foreground">
-          <Pin className="h-3 w-3" /> Pinned
-        </p>
-      ) : null}
 
       <div className="mt-3 rounded-xl rounded-tl-sm bg-bubble/60 p-3">
         <h3 className="font-semibold">{post.title}</h3>

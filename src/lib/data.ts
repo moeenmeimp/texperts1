@@ -2,9 +2,12 @@ import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { getLiveMarketRates } from "@/lib/rates.functions";
 
 export type Category = "Yarn" | "Cotton" | "Fabric";
 export const CATEGORIES: Category[] = ["Yarn", "Cotton", "Fabric"];
+
+export type PostType = "sell" | "buy";
 
 export interface Profile {
   id: string;
@@ -21,6 +24,7 @@ export interface Post {
   id: string;
   user_id: string;
   category: Category;
+  post_type: PostType;
   title: string;
   details: string;
   quantity: string;
@@ -57,6 +61,19 @@ export interface SiteSettings {
   header_text: string;
   brand_name: string;
   theme: string;
+  ads_enabled: boolean;
+}
+
+export interface BannerAd {
+  id: string;
+  title: string;
+  subtitle: string;
+  cta_text: string;
+  cta_url: string;
+  accent: string;
+  placement: string;
+  is_active: boolean;
+  sort_order: number;
 }
 
 const db = supabase as unknown as {
@@ -150,9 +167,37 @@ export function useMarketRates() {
         .select("*")
         .order("sort_order", { ascending: true });
       if (error) throw error;
-      return (data ?? []) as MarketRate[];
+      const base = (data ?? []) as MarketRate[];
+
+      try {
+        const live = await getLiveMarketRates();
+        const bySymbol = new Map(live.rates.map((rate) => [rate.symbol, rate]));
+        return base.map((rate) => {
+          const hit = bySymbol.get(rate.symbol);
+          return hit
+            ? { ...rate, value: hit.value, change_pct: hit.change_pct, updated_at: live.fetched_at }
+            : rate;
+        });
+      } catch {
+        return base;
+      }
     },
     refetchInterval: 60_000,
+  });
+}
+
+export function useBannerAds() {
+  return useQuery({
+    queryKey: ["banner-ads"],
+    queryFn: async (): Promise<BannerAd[]> => {
+      const { data, error } = await db
+        .from("banner_ads")
+        .select("*")
+        .order("sort_order", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as BannerAd[];
+    },
+    staleTime: 60_000,
   });
 }
 
