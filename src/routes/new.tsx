@@ -9,7 +9,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
-import { CATEGORIES, isProfileComplete, useProfile, useSession, type Category } from "@/lib/data";
+import {
+  CATEGORIES,
+  isProfileComplete,
+  useProfile,
+  useSession,
+  type Category,
+  type PostType,
+} from "@/lib/data";
 import { findBannedWord } from "@/lib/moderation";
 
 export const Route = createFileRoute("/new")({
@@ -40,6 +47,7 @@ function NewPostPage() {
   const { data: profile } = useProfile(user?.id);
 
   const [category, setCategory] = useState<Category>("Yarn");
+  const [postType, setPostType] = useState<PostType>("sell");
   const [form, setForm] = useState({ title: "", details: "", quantity: "", rate: "" });
   const [file, setFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
@@ -96,6 +104,7 @@ function NewPostPage() {
     const { error } = await supabase.from("posts").insert({
       user_id: user.id,
       category,
+      post_type: postType,
       title: form.title.trim(),
       details: form.details.trim(),
       quantity: form.quantity.trim(),
@@ -126,6 +135,33 @@ function NewPostPage() {
         </p>
 
         <form onSubmit={submit} className="mt-5 space-y-4 rounded-2xl bg-card p-4 shadow-card">
+          <div className="space-y-1.5">
+            <Label>Post type</Label>
+            <div className="grid grid-cols-2 gap-2">
+              {(
+                [
+                  { id: "sell", label: "Selling offer" },
+                  { id: "buy", label: "Buying requirement" },
+                ] as const
+              ).map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => setPostType(item.id)}
+                  className={`rounded-xl border px-3 py-2 text-sm font-semibold transition-colors ${
+                    postType === item.id
+                      ? item.id === "sell"
+                        ? "border-success bg-success/15 text-success"
+                        : "border-info bg-info/15 text-info"
+                      : "border-border bg-background hover:bg-accent"
+                  }`}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div className="space-y-1.5">
             <Label>Category</Label>
             <div className="flex gap-2">
