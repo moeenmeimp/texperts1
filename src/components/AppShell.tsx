@@ -1,6 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { Home, LogIn, Moon, PlusCircle, Shield, Sun, User as UserIcon } from "lucide-react";
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { MarketTicker } from "@/components/MarketTicker";
 import { Button } from "@/components/ui/button";
 import { useColorMode, usePalette } from "@/lib/theme";
