@@ -25,7 +25,7 @@ export function PostCard({
   showImage = true,
 }: {
   post: Post;
-  isAdmin?: boolean;
+  isAdmin?: boolean | undefined;
   onTogglePin?: (post: Post) => void;
   onDelete?: (post: Post) => void;
   showImage?: boolean;
