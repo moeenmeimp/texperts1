@@ -157,7 +157,7 @@ export function useMarketRates() {
 }
 
 const POST_SELECT =
-  "*, profiles:profiles!posts_user_id_fkey(id, full_name, company_name, city, whatsapp, avatar_url, is_blocked, created_at)";
+  "*, profiles:profiles!posts_profile_fkey(id, full_name, company_name, city, whatsapp, avatar_url, is_blocked, created_at)";
 
 export function usePosts() {
   return useQuery({
@@ -196,7 +196,7 @@ export function useComments(postId: string) {
     queryFn: async (): Promise<Comment[]> => {
       const { data, error } = await db
         .from("comments")
-        .select("*, profiles:profiles!comments_user_id_fkey(full_name, company_name, city)")
+        .select("*, profiles:profiles!comments_profile_fkey(full_name, company_name, city)")
         .eq("post_id", postId)
         .order("created_at", { ascending: true });
       if (error) throw error;
