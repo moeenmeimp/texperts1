@@ -14,16 +14,209 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      comments: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          post_id: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          post_id: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          post_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comments_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      market_rates: {
+        Row: {
+          change_pct: number
+          id: string
+          label: string
+          sort_order: number
+          symbol: string
+          unit: string
+          updated_at: string
+          value: number
+        }
+        Insert: {
+          change_pct?: number
+          id?: string
+          label: string
+          sort_order?: number
+          symbol: string
+          unit?: string
+          updated_at?: string
+          value?: number
+        }
+        Update: {
+          change_pct?: number
+          id?: string
+          label?: string
+          sort_order?: number
+          symbol?: string
+          unit?: string
+          updated_at?: string
+          value?: number
+        }
+        Relationships: []
+      }
+      posts: {
+        Row: {
+          category: string
+          created_at: string
+          details: string
+          id: string
+          image_path: string | null
+          is_pinned: boolean
+          quantity: string
+          rate: string
+          title: string
+          user_id: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          details?: string
+          id?: string
+          image_path?: string | null
+          is_pinned?: boolean
+          quantity?: string
+          rate?: string
+          title: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          details?: string
+          id?: string
+          image_path?: string | null
+          is_pinned?: boolean
+          quantity?: string
+          rate?: string
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          city: string
+          company_name: string
+          created_at: string
+          full_name: string
+          id: string
+          is_blocked: boolean
+          updated_at: string
+          whatsapp: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          city?: string
+          company_name?: string
+          created_at?: string
+          full_name?: string
+          id: string
+          is_blocked?: boolean
+          updated_at?: string
+          whatsapp?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          city?: string
+          company_name?: string
+          created_at?: string
+          full_name?: string
+          id?: string
+          is_blocked?: boolean
+          updated_at?: string
+          whatsapp?: string
+        }
+        Relationships: []
+      }
+      site_settings: {
+        Row: {
+          brand_name: string
+          header_text: string
+          id: number
+          site_title: string
+          theme: string
+          updated_at: string
+        }
+        Insert: {
+          brand_name?: string
+          header_text?: string
+          id?: number
+          site_title?: string
+          theme?: string
+          updated_at?: string
+        }
+        Update: {
+          brand_name?: string
+          header_text?: string
+          id?: number
+          site_title?: string
+          theme?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +343,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "user"],
+    },
   },
 } as const
