@@ -34,7 +34,7 @@ async function fetchYahoo(symbol: string, yahooSymbol: string): Promise<LiveRate
     const res = await fetchWithTimeout(
       `https://query1.finance.yahoo.com/v8/finance/chart/${yahooSymbol}?interval=1d&range=5d`,
     );
-    if (!res.ok) return null;
+    if (!res.ok) { console.error("yahoo", yahooSymbol, res.status); return null; }
     const json = (await res.json()) as {
       chart?: { result?: Array<{ meta?: { regularMarketPrice?: number; regularMarketChangePercent?: number } }> };
     };
@@ -47,7 +47,8 @@ async function fetchYahoo(symbol: string, yahooSymbol: string): Promise<LiveRate
       value: meta.regularMarketPrice,
       change_pct: Number(meta.regularMarketChangePercent ?? 0),
     };
-  } catch {
+  } catch (e) {
+    console.error("yahoo-throw", yahooSymbol, e);
     return null;
   }
 }
