@@ -13,6 +13,13 @@ const YAHOO_SYMBOLS: Record<string, string> = {
   SILVER: "SI=F",
 };
 
+const CNBC_SYMBOLS: Record<string, string> = {
+  WTI: "@CL.1",
+  BRENT: "@LCO.1",
+  GOLD: "@GC.1",
+  SILVER: "@SI.1",
+};
+
 const METAL_FALLBACK: Record<string, string> = { GOLD: "XAU", SILVER: "XAG" };
 
 const UA =
@@ -65,6 +72,25 @@ async function fetchYahoo(symbol: string, yahooSymbol: string): Promise<LiveRate
     }
   }
   return null;
+}
+
+async function fetchCnbc(symbol: string, code: string): Promise<LiveRate | null> {
+  try {
+    const res = await fetchWithTimeout(
+      `https://quote.cnbc.com/quote-html-webservice/restQuote/symbolType/symbol?symbols=${encodeURIComponent(code)}&requestMethod=itv&noform=1&partnerId=2&fund=1&exthrs=1&output=json&events=1`,
+    );
+    if (!res.ok) return null;
+    const json = (await res.json()) as {
+      FormattedQuoteResult?: { FormattedQuote?: Array<{ last?: string; change_pct?: string }> };
+    };
+    const quote = json.FormattedQuoteResult?.FormattedQuote?.[0];
+    const value = Number(String(quote?.last ?? "").replace(/,/g, ""));
+    if (!Number.isFinite(value) || value <= 0) return null;
+    const pct = Number(String(quote?.change_pct ?? "").replace("%", ""));
+    return { symbol, value, change_pct: Number.isFinite(pct) ? pct : null };
+  } catch {
+    return null;
+  }
 }
 
 async function fetchMetal(symbol: string, code: string): Promise<LiveRate | null> {
@@ -123,7 +149,8 @@ export const getLiveMarketRates = createServerFn({ method: "GET" }).handler(asyn
 
   const rates: LiveRate[] = [];
   for (const [symbol, yahooSymbol] of Object.entries(YAHOO_SYMBOLS)) {
-    let hit = await fetchYahoo(symbol, yahooSymbol);
+    let hit = await fetchCnbc(symbol, CNBC_SYMBOLS[symbol]!);
+    if (!hit) hit = await fetchYahoo(symbol, yahooSymbol);
     if (!hit && METAL_FALLBACK[symbol]) hit = await fetchMetal(symbol, METAL_FALLBACK[symbol]!);
     if (hit) rates.push(hit);
   }
