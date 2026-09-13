@@ -175,7 +175,12 @@ export function useMarketRates() {
         return base.map((rate) => {
           const hit = bySymbol.get(rate.symbol);
           return hit
-            ? { ...rate, value: hit.value, change_pct: hit.change_pct, updated_at: live.fetched_at }
+            ? {
+                ...rate,
+                value: hit.value,
+                change_pct: hit.change_pct ?? rate.change_pct,
+                updated_at: live.fetched_at,
+              }
             : rate;
         });
       } catch {

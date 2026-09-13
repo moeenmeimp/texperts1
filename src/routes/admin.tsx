@@ -10,12 +10,15 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { PALETTES } from "@/lib/theme";
+import { Switch } from "@/components/ui/switch";
 import {
+  useBannerAds,
   useIsAdmin,
   useMarketRates,
   usePosts,
   useSession,
   useSiteSettings,
+  type BannerAd,
   type Post,
   type Profile,
 } from "@/lib/data";
@@ -71,18 +74,23 @@ function AdminPage() {
     <AppShell>
       <h2 className="text-xl font-bold">Admin dashboard</h2>
       <Tabs defaultValue="settings" className="mt-4">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="settings">Site</TabsTrigger>
           <TabsTrigger value="theme">Theme</TabsTrigger>
+          <TabsTrigger value="ads">Ads</TabsTrigger>
           <TabsTrigger value="posts">Posts</TabsTrigger>
           <TabsTrigger value="members">Members</TabsTrigger>
         </TabsList>
         <TabsContent value="settings">
           <SiteSettingsPanel />
+          <PasswordPanel />
           <MarketRatesPanel />
         </TabsContent>
         <TabsContent value="theme">
           <ThemePanel />
+        </TabsContent>
+        <TabsContent value="ads">
+          <AdsPanel />
         </TabsContent>
         <TabsContent value="posts">
           <PostsPanel />
@@ -364,6 +372,193 @@ function MembersPanel() {
         </div>
       ))}
       {members.length === 0 ? <p className="text-sm text-muted-foreground">No members yet.</p> : null}
+    </div>
+  );
+}
+
+function PasswordPanel() {
+  const [form, setForm] = useState({ current: "", next: "", confirm: "" });
+  const [saving, setSaving] = useState(false);
+
+  async function save(event: React.FormEvent) {
+    event.preventDefault();
+    if (form.next.length < 8) {
+      toast.error("Use at least 8 characters.");
+      return;
+    }
+    if (form.next !== form.confirm) {
+      toast.error("New passwords do not match.");
+      return;
+    }
+    setSaving(true);
+    const { error } = await supabase.auth.updateUser({
+      password: form.next,
+      ...(form.current ? { current_password: form.current } : {}),
+    } as never);
+    setSaving(false);
+    if (error) {
+      toast.error(error.message || "Could not change the password.");
+      return;
+    }
+    setForm({ current: "", next: "", confirm: "" });
+    toast.success("Password updated.");
+  }
+
+  return (
+    <form onSubmit={save} className="mt-4 space-y-4 rounded-2xl bg-card p-4 shadow-card">
+      <h3 className="font-semibold">Change admin password</h3>
+      <div className="space-y-1.5">
+        <Label htmlFor="current-password">Current password</Label>
+        <Input
+          id="current-password"
+          type="password"
+          autoComplete="current-password"
+          value={form.current}
+          onChange={(e) => setForm({ ...form, current: e.target.value })}
+        />
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="space-y-1.5">
+          <Label htmlFor="new-password">New password</Label>
+          <Input
+            id="new-password"
+            type="password"
+            autoComplete="new-password"
+            value={form.next}
+            onChange={(e) => setForm({ ...form, next: e.target.value })}
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="confirm-password">Confirm new password</Label>
+          <Input
+            id="confirm-password"
+            type="password"
+            autoComplete="new-password"
+            value={form.confirm}
+            onChange={(e) => setForm({ ...form, confirm: e.target.value })}
+          />
+        </div>
+      </div>
+      <Button type="submit" disabled={saving}>
+        {saving ? "Saving…" : "Update password"}
+      </Button>
+    </form>
+  );
+}
+
+function AdsPanel() {
+  const { data: settings } = useSiteSettings();
+  const { data: ads = [] } = useBannerAds();
+  const queryClient = useQueryClient();
+  const [drafts, setDrafts] = useState<Record<string, Partial<BannerAd>>>({});
+
+  async function toggleAdsEnabled(value: boolean) {
+    const { error } = await supabase
+      .from("site_settings")
+      .update({ ads_enabled: value } as never)
+      .eq("id", 1);
+    if (error) {
+      toast.error("Could not update ad visibility.");
+      return;
+    }
+    await queryClient.invalidateQueries({ queryKey: ["site-settings"] });
+  }
+
+  async function saveAd(ad: BannerAd) {
+    const draft = drafts[ad.id] ?? {};
+    const { error } = await supabase
+      .from("banner_ads")
+      .update({ ...draft } as never)
+      .eq("id", ad.id);
+    if (error) {
+      toast.error("Could not save this ad space.");
+      return;
+    }
+    await queryClient.invalidateQueries({ queryKey: ["banner-ads"] });
+    toast.success("Ad space saved.");
+  }
+
+  async function toggleAd(ad: BannerAd) {
+    const { error } = await supabase
+      .from("banner_ads")
+      .update({ is_active: !ad.is_active } as never)
+      .eq("id", ad.id);
+    if (error) {
+      toast.error("Could not update this ad space.");
+      return;
+    }
+    await queryClient.invalidateQueries({ queryKey: ["banner-ads"] });
+  }
+
+  return (
+    <div className="mt-4 space-y-4">
+      <div className="flex items-center justify-between rounded-2xl bg-card p-4 shadow-card">
+        <div>
+          <h3 className="font-semibold">Show ad spaces</h3>
+          <p className="text-sm text-muted-foreground">Hide every promotional slot at once.</p>
+        </div>
+        <Switch checked={settings?.ads_enabled !== false} onCheckedChange={toggleAdsEnabled} />
+      </div>
+
+      {ads.map((ad) => {
+        const draft = { ...ad, ...drafts[ad.id] };
+        return (
+          <div key={ad.id} className="space-y-3 rounded-2xl bg-card p-4 shadow-card">
+            <div className="flex items-center justify-between gap-3">
+              <p className="truncate font-semibold">{ad.title}</p>
+              <Switch checked={ad.is_active} onCheckedChange={() => toggleAd(ad)} />
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Headline</Label>
+                <Input
+                  value={draft.title}
+                  onChange={(e) =>
+                    setDrafts({ ...drafts, [ad.id]: { ...drafts[ad.id], title: e.target.value } })
+                  }
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Subtitle</Label>
+                <Input
+                  value={draft.subtitle}
+                  onChange={(e) =>
+                    setDrafts({
+                      ...drafts,
+                      [ad.id]: { ...drafts[ad.id], subtitle: e.target.value },
+                    })
+                  }
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Button text</Label>
+                <Input
+                  value={draft.cta_text}
+                  onChange={(e) =>
+                    setDrafts({
+                      ...drafts,
+                      [ad.id]: { ...drafts[ad.id], cta_text: e.target.value },
+                    })
+                  }
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Link (optional)</Label>
+                <Input
+                  value={draft.cta_url}
+                  placeholder="https://"
+                  onChange={(e) =>
+                    setDrafts({ ...drafts, [ad.id]: { ...drafts[ad.id], cta_url: e.target.value } })
+                  }
+                />
+              </div>
+            </div>
+            <Button size="sm" variant="secondary" onClick={() => saveAd(ad)}>
+              Save ad space
+            </Button>
+          </div>
+        );
+      })}
     </div>
   );
 }
