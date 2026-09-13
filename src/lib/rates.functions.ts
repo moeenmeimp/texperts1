@@ -32,7 +32,7 @@ async function fetchWithTimeout(url: string, ms = 8000) {
 async function fetchYahoo(symbol: string, yahooSymbol: string): Promise<LiveRate | null> {
   try {
     const res = await fetchWithTimeout(
-      `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?interval=1d&range=5d`,
+      `https://query1.finance.yahoo.com/v8/finance/chart/${yahooSymbol}?interval=1d&range=5d`,
     );
     if (!res.ok) return null;
     const json = (await res.json()) as {
