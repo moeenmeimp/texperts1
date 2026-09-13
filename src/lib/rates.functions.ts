@@ -3,7 +3,7 @@ import { createServerFn } from "@tanstack/react-start";
 export interface LiveRate {
   symbol: string;
   value: number;
-  change_pct: number;
+  change_pct: number | null;
 }
 
 const YAHOO_SYMBOLS: Record<string, string> = {
@@ -13,8 +13,13 @@ const YAHOO_SYMBOLS: Record<string, string> = {
   SILVER: "SI=F",
 };
 
+const METAL_FALLBACK: Record<string, string> = { GOLD: "XAU", SILVER: "XAG" };
+
 const UA =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36";
+
+const CACHE_MS = 60_000;
+let cache: { at: number; payload: { rates: LiveRate[]; fetched_at: string } } | null = null;
 
 async function fetchWithTimeout(url: string, ms = 8000) {
   const controller = new AbortController();
@@ -30,25 +35,46 @@ async function fetchWithTimeout(url: string, ms = 8000) {
 }
 
 async function fetchYahoo(symbol: string, yahooSymbol: string): Promise<LiveRate | null> {
-  try {
-    const res = await fetchWithTimeout(
-      `https://query1.finance.yahoo.com/v8/finance/chart/${yahooSymbol}?interval=1d&range=5d`,
-    );
-    if (!res.ok) { console.error("yahoo", yahooSymbol, res.status); return null; }
-    const json = (await res.json()) as {
-      chart?: { result?: Array<{ meta?: { regularMarketPrice?: number; regularMarketChangePercent?: number } }> };
-    };
-    const meta = json.chart?.result?.[0]?.meta;
-    if (!meta || typeof meta.regularMarketPrice !== "number" || meta.regularMarketPrice <= 0) {
-      return null;
+  for (const host of ["query2", "query1"]) {
+    try {
+      const res = await fetchWithTimeout(
+        `https://${host}.finance.yahoo.com/v8/finance/chart/${yahooSymbol}?interval=1d&range=5d`,
+      );
+      if (!res.ok) continue;
+      const json = (await res.json()) as {
+        chart?: {
+          result?: Array<{
+            meta?: { regularMarketPrice?: number; regularMarketChangePercent?: number };
+          }>;
+        };
+      };
+      const meta = json.chart?.result?.[0]?.meta;
+      if (!meta || typeof meta.regularMarketPrice !== "number" || meta.regularMarketPrice <= 0) {
+        continue;
+      }
+      return {
+        symbol,
+        value: meta.regularMarketPrice,
+        change_pct:
+          typeof meta.regularMarketChangePercent === "number"
+            ? meta.regularMarketChangePercent
+            : null,
+      };
+    } catch {
+      /* try next host */
     }
-    return {
-      symbol,
-      value: meta.regularMarketPrice,
-      change_pct: Number(meta.regularMarketChangePercent ?? 0),
-    };
-  } catch (e) {
-    console.error("yahoo-throw", yahooSymbol, e);
+  }
+  return null;
+}
+
+async function fetchMetal(symbol: string, code: string): Promise<LiveRate | null> {
+  try {
+    const res = await fetchWithTimeout(`https://api.gold-api.com/price/${code}`);
+    if (!res.ok) return null;
+    const json = (await res.json()) as { price?: number };
+    if (typeof json.price !== "number" || json.price <= 0) return null;
+    return { symbol, value: json.price, change_pct: null };
+  } catch {
     return null;
   }
 }
@@ -66,24 +92,48 @@ async function fetchPsx(): Promise<LiveRate | null> {
     const value = Number(match[1]!.replace(/,/g, ""));
     if (!Number.isFinite(value) || value <= 0) return null;
     const pct = Number(match[3]);
-    return {
-      symbol: "PSX100",
-      value,
-      change_pct: match[2] === "neg" ? -pct : pct,
-    };
+    return { symbol: "PSX100", value, change_pct: match[2] === "neg" ? -pct : pct };
   } catch {
     return null;
   }
 }
 
-export const getLiveMarketRates = createServerFn({ method: "GET" }).handler(async () => {
-  const results: Array<LiveRate | null> = [];
-  for (const [symbol, yahoo] of Object.entries(YAHOO_SYMBOLS)) {
-    let hit = await fetchYahoo(symbol, yahoo);
-    if (!hit) hit = await fetchYahoo(symbol, yahoo);
-    results.push(hit);
+async function persist(rates: LiveRate[]) {
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await Promise.all(
+      rates.map((rate) =>
+        supabaseAdmin
+          .from("market_rates")
+          .update({
+            value: rate.value,
+            ...(rate.change_pct === null ? {} : { change_pct: rate.change_pct }),
+            updated_at: new Date().toISOString(),
+          } as never)
+          .eq("symbol", rate.symbol),
+      ),
+    );
+  } catch {
+    /* persistence is best-effort */
   }
-  results.push(await fetchPsx());
-  const rates = results.filter((item): item is LiveRate => item !== null);
-  return { rates, fetched_at: new Date().toISOString() };
+}
+
+export const getLiveMarketRates = createServerFn({ method: "GET" }).handler(async () => {
+  if (cache && Date.now() - cache.at < CACHE_MS) return cache.payload;
+
+  const rates: LiveRate[] = [];
+  for (const [symbol, yahooSymbol] of Object.entries(YAHOO_SYMBOLS)) {
+    let hit = await fetchYahoo(symbol, yahooSymbol);
+    if (!hit && METAL_FALLBACK[symbol]) hit = await fetchMetal(symbol, METAL_FALLBACK[symbol]!);
+    if (hit) rates.push(hit);
+  }
+  const psx = await fetchPsx();
+  if (psx) rates.push(psx);
+
+  const payload = { rates, fetched_at: new Date().toISOString() };
+  if (rates.length > 0) {
+    cache = { at: Date.now(), payload };
+    await persist(rates);
+  }
+  return payload;
 });
