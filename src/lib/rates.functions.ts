@@ -76,10 +76,13 @@ async function fetchPsx(): Promise<LiveRate | null> {
 }
 
 export const getLiveMarketRates = createServerFn({ method: "GET" }).handler(async () => {
-  const results = await Promise.all([
-    ...Object.entries(YAHOO_SYMBOLS).map(([symbol, yahoo]) => fetchYahoo(symbol, yahoo)),
-    fetchPsx(),
-  ]);
+  const results: Array<LiveRate | null> = [];
+  for (const [symbol, yahoo] of Object.entries(YAHOO_SYMBOLS)) {
+    let hit = await fetchYahoo(symbol, yahoo);
+    if (!hit) hit = await fetchYahoo(symbol, yahoo);
+    results.push(hit);
+  }
+  results.push(await fetchPsx());
   const rates = results.filter((item): item is LiveRate => item !== null);
   return { rates, fetched_at: new Date().toISOString() };
 });
