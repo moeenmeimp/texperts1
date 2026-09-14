@@ -21,7 +21,9 @@ export type Database = {
           cta_text: string
           cta_url: string
           id: string
+          image_path: string | null
           is_active: boolean
+          page_slug: string | null
           placement: string
           sort_order: number
           subtitle: string
@@ -33,7 +35,9 @@ export type Database = {
           cta_text?: string
           cta_url?: string
           id?: string
+          image_path?: string | null
           is_active?: boolean
+          page_slug?: string | null
           placement?: string
           sort_order?: number
           subtitle?: string
@@ -45,7 +49,9 @@ export type Database = {
           cta_text?: string
           cta_url?: string
           id?: string
+          image_path?: string | null
           is_active?: boolean
+          page_slug?: string | null
           placement?: string
           sort_order?: number
           subtitle?: string
@@ -92,6 +98,33 @@ export type Database = {
           },
         ]
       }
+      conversations: {
+        Row: {
+          created_at: string
+          id: string
+          last_message_at: string
+          updated_at: string
+          user_a: string
+          user_b: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_message_at?: string
+          updated_at?: string
+          user_a: string
+          user_b: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_message_at?: string
+          updated_at?: string
+          user_a?: string
+          user_b?: string
+        }
+        Relationships: []
+      }
       market_rates: {
         Row: {
           change_pct: number
@@ -122,6 +155,86 @@ export type Database = {
           unit?: string
           updated_at?: string
           value?: number
+        }
+        Relationships: []
+      }
+      messages: {
+        Row: {
+          body: string
+          conversation_id: string
+          created_at: string
+          file_name: string | null
+          file_path: string | null
+          file_type: string | null
+          id: string
+          sender_id: string
+        }
+        Insert: {
+          body?: string
+          conversation_id: string
+          created_at?: string
+          file_name?: string | null
+          file_path?: string | null
+          file_type?: string | null
+          id?: string
+          sender_id: string
+        }
+        Update: {
+          body?: string
+          conversation_id?: string
+          created_at?: string
+          file_name?: string | null
+          file_path?: string | null
+          file_type?: string | null
+          id?: string
+          sender_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pages: {
+        Row: {
+          content_html: string
+          created_at: string
+          id: string
+          is_published: boolean
+          page_type: string
+          show_in_nav: boolean
+          slug: string
+          sort_order: number
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          content_html?: string
+          created_at?: string
+          id?: string
+          is_published?: boolean
+          page_type?: string
+          show_in_nav?: boolean
+          slug: string
+          sort_order?: number
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          content_html?: string
+          created_at?: string
+          id?: string
+          is_published?: boolean
+          page_type?: string
+          show_in_nav?: boolean
+          slug?: string
+          sort_order?: number
+          title?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -215,6 +328,10 @@ export type Database = {
         Row: {
           ads_enabled: boolean
           brand_name: string
+          contact_address: string
+          contact_email: string
+          contact_phone: string
+          footer_text: string
           header_text: string
           id: number
           site_title: string
@@ -224,6 +341,10 @@ export type Database = {
         Insert: {
           ads_enabled?: boolean
           brand_name?: string
+          contact_address?: string
+          contact_email?: string
+          contact_phone?: string
+          footer_text?: string
           header_text?: string
           id?: number
           site_title?: string
@@ -233,6 +354,10 @@ export type Database = {
         Update: {
           ads_enabled?: boolean
           brand_name?: string
+          contact_address?: string
+          contact_email?: string
+          contact_phone?: string
+          footer_text?: string
           header_text?: string
           id?: number
           site_title?: string

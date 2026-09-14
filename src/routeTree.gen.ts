@@ -14,6 +14,7 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as NewRouteImport } from './routes/new'
 import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as PSlugRouteImport } from './routes/p.$slug'
 import { Route as PostPostIdRouteImport } from './routes/post.$postId'
 
 const IndexRoute = IndexRouteImport.update({
@@ -41,6 +42,11 @@ const ProfileRoute = ProfileRouteImport.update({
   path: '/profile',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PSlugRoute = PSlugRouteImport.update({
+  id: '/p/$slug',
+  path: '/p/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PostPostIdRoute = PostPostIdRouteImport.update({
   id: '/post/$postId',
   path: '/post/$postId',
@@ -53,6 +59,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/new': typeof NewRoute
   '/profile': typeof ProfileRoute
+  '/p/$slug': typeof PSlugRoute
   '/post/$postId': typeof PostPostIdRoute
 }
 export interface FileRoutesByTo {
@@ -61,6 +68,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/new': typeof NewRoute
   '/profile': typeof ProfileRoute
+  '/p/$slug': typeof PSlugRoute
   '/post/$postId': typeof PostPostIdRoute
 }
 export interface FileRoutesById {
@@ -70,13 +78,28 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/new': typeof NewRoute
   '/profile': typeof ProfileRoute
+  '/p/$slug': typeof PSlugRoute
   '/post/$postId': typeof PostPostIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/admin' | '/auth' | '/new' | '/profile' | '/post/$postId'
+  fullPaths:
+    | '/'
+    | '/admin'
+    | '/auth'
+    | '/new'
+    | '/profile'
+    | '/p/$slug'
+    | '/post/$postId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/admin' | '/auth' | '/new' | '/profile' | '/post/$postId'
+  to:
+    | '/'
+    | '/admin'
+    | '/auth'
+    | '/new'
+    | '/profile'
+    | '/p/$slug'
+    | '/post/$postId'
   id:
     | '__root__'
     | '/'
@@ -84,6 +107,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/new'
     | '/profile'
+    | '/p/$slug'
     | '/post/$postId'
   fileRoutesById: FileRoutesById
 }
@@ -93,6 +117,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   NewRoute: typeof NewRoute
   ProfileRoute: typeof ProfileRoute
+  PSlugRoute: typeof PSlugRoute
   PostPostIdRoute: typeof PostPostIdRoute
 }
 
@@ -133,6 +158,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProfileRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/p/$slug': {
+      id: '/p/$slug'
+      path: '/p/$slug'
+      fullPath: '/p/$slug'
+      preLoaderRoute: typeof PSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/post/$postId': {
       id: '/post/$postId'
       path: '/post/$postId'
@@ -149,6 +181,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   NewRoute: NewRoute,
   ProfileRoute: ProfileRoute,
+  PSlugRoute: PSlugRoute,
   PostPostIdRoute: PostPostIdRoute,
 }
 export const routeTree = rootRouteImport
