@@ -62,6 +62,10 @@ export interface SiteSettings {
   brand_name: string;
   theme: string;
   ads_enabled: boolean;
+  footer_text: string;
+  contact_email: string;
+  contact_phone: string;
+  contact_address: string;
 }
 
 export interface BannerAd {
@@ -74,7 +78,40 @@ export interface BannerAd {
   placement: string;
   is_active: boolean;
   sort_order: number;
+  image_path: string | null;
+  page_slug: string | null;
 }
+
+export interface Page {
+  id: string;
+  slug: string;
+  title: string;
+  content_html: string;
+  page_type: string;
+  show_in_nav: boolean;
+  is_published: boolean;
+  sort_order: number;
+}
+
+export interface Conversation {
+  id: string;
+  user_a: string;
+  user_b: string;
+  last_message_at: string;
+  created_at: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  conversation_id: string;
+  sender_id: string;
+  body: string;
+  file_path: string | null;
+  file_name: string | null;
+  file_type: string | null;
+  created_at: string;
+}
+
 
 const db = supabase as unknown as {
   from: (table: string) => any;
