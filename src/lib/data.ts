@@ -329,3 +329,163 @@ export function timeAgo(iso: string) {
 export function formatRate(value: number) {
   return value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
+
+/* ---------------- pages ---------------- */
+
+export function usePages(navOnly = false) {
+  return useQuery({
+    queryKey: ["pages", navOnly],
+    queryFn: async (): Promise<Page[]> => {
+      let query = db.from("pages").select("*").order("sort_order", { ascending: true });
+      if (navOnly) query = query.eq("show_in_nav", true).eq("is_published", true);
+      const { data, error } = await query;
+      if (error) throw error;
+      return (data ?? []) as Page[];
+    },
+    staleTime: 60_000,
+  });
+}
+
+export function usePage(slug: string) {
+  return useQuery({
+    queryKey: ["page", slug],
+    queryFn: async (): Promise<Page | null> => {
+      const { data, error } = await db.from("pages").select("*").eq("slug", slug).maybeSingle();
+      if (error) throw error;
+      return data as Page | null;
+    },
+  });
+}
+
+/* ---------------- storage ---------------- */
+
+export function useSignedFile(bucket: string, path: string | null | undefined) {
+  return useQuery({
+    queryKey: ["signed", bucket, path],
+    enabled: !!path,
+    staleTime: 30 * 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase.storage
+        .from(bucket)
+        .createSignedUrl(path as string, 60 * 60);
+      if (error) throw error;
+      return data.signedUrl;
+    },
+  });
+}
+
+/* ---------------- chat ---------------- */
+
+export interface ConversationThread extends Conversation {
+  other: Profile | null;
+  last_body: string;
+}
+
+export function useConversations(userId: string | undefined) {
+  return useQuery({
+    queryKey: ["conversations", userId],
+    enabled: !!userId,
+    refetchInterval: 20_000,
+    queryFn: async (): Promise<ConversationThread[]> => {
+      const { data, error } = await db
+        .from("conversations")
+        .select("*")
+        .order("last_message_at", { ascending: false });
+      if (error) throw error;
+      const rows = (data ?? []) as Conversation[];
+      if (rows.length === 0) return [];
+
+      const otherIds = rows.map((row) => (row.user_a === userId ? row.user_b : row.user_a));
+      const { data: profiles } = await db.from("profiles").select("*").in("id", otherIds);
+      const byId = new Map<string, Profile>(
+        ((profiles ?? []) as Profile[]).map((profile) => [profile.id, profile]),
+      );
+
+      const { data: recent } = await db
+        .from("messages")
+        .select("conversation_id, body, file_name, created_at")
+        .in(
+          "conversation_id",
+          rows.map((row) => row.id),
+        )
+        .order("created_at", { ascending: false })
+        .limit(200);
+      const lastByConversation = new Map<string, string>();
+      ((recent ?? []) as Array<{ conversation_id: string; body: string; file_name: string | null }>)
+        .forEach((message) => {
+          if (!lastByConversation.has(message.conversation_id)) {
+            lastByConversation.set(
+              message.conversation_id,
+              message.body || message.file_name || "Attachment",
+            );
+          }
+        });
+
+      return rows.map((row) => ({
+        ...row,
+        other: byId.get(row.user_a === userId ? row.user_b : row.user_a) ?? null,
+        last_body: lastByConversation.get(row.id) ?? "",
+      }));
+    },
+  });
+}
+
+export function useMessages(conversationId: string | undefined) {
+  const query = useQuery({
+    queryKey: ["messages", conversationId],
+    enabled: !!conversationId,
+    queryFn: async (): Promise<ChatMessage[]> => {
+      const { data, error } = await db
+        .from("messages")
+        .select("*")
+        .eq("conversation_id", conversationId)
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as ChatMessage[];
+    },
+  });
+
+  const { refetch } = query;
+  useEffect(() => {
+    if (!conversationId) return;
+    const channel = supabase
+      .channel(`messages-${conversationId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "messages",
+          filter: `conversation_id=eq.${conversationId}`,
+        },
+        () => {
+          void refetch();
+        },
+      )
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [conversationId, refetch]);
+
+  return query;
+}
+
+export async function getOrCreateConversation(meId: string, otherId: string) {
+  const [userA, userB] = meId < otherId ? [meId, otherId] : [otherId, meId];
+  const { data: existing } = await db
+    .from("conversations")
+    .select("id")
+    .eq("user_a", userA)
+    .eq("user_b", userB)
+    .maybeSingle();
+  if (existing?.id) return existing.id as string;
+
+  const { data, error } = await db
+    .from("conversations")
+    .insert({ user_a: userA, user_b: userB })
+    .select("id")
+    .single();
+  if (error) throw error;
+  return data.id as string;
+}
