@@ -61,7 +61,7 @@ function ChatPage() {
       .then((id) => {
         if (cancelled) return;
         setActive(id);
-        void navigate({ to: "/chat", search: { c: id }, replace: true });
+        void navigate({ to: "/chat", search: { u: undefined, c: id }, replace: true });
       })
       .catch(() => toast.error("Could not open that conversation."));
     return () => {
@@ -89,7 +89,7 @@ function ChatPage() {
               active={item.id === active}
               onSelect={() => {
                 setActive(item.id);
-                void navigate({ to: "/chat", search: { c: item.id }, replace: true });
+                void navigate({ to: "/chat", search: { u: undefined, c: item.id }, replace: true });
               }}
             />
           ))}
@@ -103,7 +103,7 @@ function ChatPage() {
               title={thread?.other?.full_name || thread?.other?.company_name || "Conversation"}
               onBack={() => {
                 setActive(undefined);
-                void navigate({ to: "/chat", search: {}, replace: true });
+                void navigate({ to: "/chat", search: { u: undefined, c: undefined }, replace: true });
               }}
             />
           ) : (
