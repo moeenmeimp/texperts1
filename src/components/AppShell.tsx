@@ -190,7 +190,12 @@ export function AppShell({ children }: { children: ReactNode }) {
         </p>
         <p className="mt-2 flex flex-wrap items-center justify-center gap-3">
           {navPages.map((page) => (
-            <Link key={page.id} to={`/p/${page.slug}`} className="underline">
+            <Link
+              key={page.id}
+              to="/p/$slug"
+              params={{ slug: page.slug }}
+              className="underline"
+            >
               {page.title}
             </Link>
           ))}
