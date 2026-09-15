@@ -1,8 +1,10 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
+  FileText,
   Home,
   LogIn,
   Menu,
+  MessagesSquare,
   Moon,
   PlusCircle,
   Shield,
@@ -14,7 +16,7 @@ import { MarketTicker } from "@/components/MarketTicker";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useColorMode, usePalette } from "@/lib/theme";
-import { useIsAdmin, useSession, useSiteSettings } from "@/lib/data";
+import { useIsAdmin, usePages, useSession, useSiteSettings } from "@/lib/data";
 
 function NavItem({
   to,
@@ -45,6 +47,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { dark, toggle } = useColorMode();
   const { user } = useSession();
   const { data: isAdmin } = useIsAdmin(user?.id);
+  const { data: navPages = [] } = usePages(true);
   const path = useRouterState({ select: (s) => s.location.pathname });
   const [menuOpen, setMenuOpen] = useState(false);
   usePalette(settings?.theme);
@@ -58,7 +61,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   const links: Array<{ to: string; label: string; icon: typeof Home }> = [
     { to: "/", label: "Feed", icon: Home },
     { to: "/new", label: "New post", icon: PlusCircle },
+    ...(user ? [{ to: "/chat", label: "Messages", icon: MessagesSquare }] : []),
     { to: "/profile", label: "Profile", icon: UserIcon },
+    ...navPages.map((page) => ({ to: `/p/${page.slug}`, label: page.title, icon: FileText })),
     ...(isAdmin ? [{ to: "/admin", label: "Admin", icon: Shield }] : []),
   ];
 
@@ -164,14 +169,32 @@ export function AppShell({ children }: { children: ReactNode }) {
       <nav className="fixed inset-x-0 bottom-0 z-30 flex border-t border-border bg-card md:hidden">
         <NavItem to="/" label="Feed" icon={Home} active={path === "/"} />
         <NavItem to="/new" label="Post" icon={PlusCircle} active={path === "/new"} />
+        {user ? (
+          <NavItem to="/chat" label="Chats" icon={MessagesSquare} active={path === "/chat"} />
+        ) : null}
         <NavItem to="/profile" label="Profile" icon={UserIcon} active={path === "/profile"} />
         {isAdmin ? (
           <NavItem to="/admin" label="Admin" icon={Shield} active={path === "/admin"} />
         ) : null}
       </nav>
 
-      <footer className="hidden border-t border-border py-6 text-center text-xs text-muted-foreground md:block">
-        {brand} — B2B textile & commodity trading marketplace
+      <footer className="border-t border-border px-3 py-6 text-center text-xs text-muted-foreground">
+        <p className="font-semibold text-foreground">{brand}</p>
+        <p className="mt-1">
+          {settings?.footer_text ?? "B2B textile & commodity trading marketplace"}
+        </p>
+        <p className="mt-1 flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
+          {settings?.contact_email ? <span>{settings.contact_email}</span> : null}
+          {settings?.contact_phone ? <span>{settings.contact_phone}</span> : null}
+          {settings?.contact_address ? <span>{settings.contact_address}</span> : null}
+        </p>
+        <p className="mt-2 flex flex-wrap items-center justify-center gap-3">
+          {navPages.map((page) => (
+            <Link key={page.id} to={`/p/${page.slug}`} className="underline">
+              {page.title}
+            </Link>
+          ))}
+        </p>
       </footer>
     </div>
   );
