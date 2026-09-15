@@ -11,14 +11,19 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { PALETTES } from "@/lib/theme";
 import { Switch } from "@/components/ui/switch";
+import { RichTextEditor } from "@/components/RichTextEditor";
+import { Textarea } from "@/components/ui/textarea";
 import {
   useBannerAds,
+  usePages,
+  useSignedFile,
   useIsAdmin,
   useMarketRates,
   usePosts,
   useSession,
   useSiteSettings,
   type BannerAd,
+  type Page,
   type Post,
   type Profile,
 } from "@/lib/data";
@@ -74,10 +79,11 @@ function AdminPage() {
     <AppShell>
       <h2 className="text-xl font-bold">Admin dashboard</h2>
       <Tabs defaultValue="settings" className="mt-4">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="settings">Site</TabsTrigger>
           <TabsTrigger value="theme">Theme</TabsTrigger>
           <TabsTrigger value="ads">Ads</TabsTrigger>
+          <TabsTrigger value="pages">Pages</TabsTrigger>
           <TabsTrigger value="posts">Posts</TabsTrigger>
           <TabsTrigger value="members">Members</TabsTrigger>
         </TabsList>
@@ -91,6 +97,9 @@ function AdminPage() {
         </TabsContent>
         <TabsContent value="ads">
           <AdsPanel />
+        </TabsContent>
+        <TabsContent value="pages">
+          <PagesPanel />
         </TabsContent>
         <TabsContent value="posts">
           <PostsPanel />
@@ -106,7 +115,15 @@ function AdminPage() {
 function SiteSettingsPanel() {
   const { data: settings } = useSiteSettings();
   const queryClient = useQueryClient();
-  const [form, setForm] = useState({ site_title: "", header_text: "", brand_name: "" });
+  const [form, setForm] = useState({
+    site_title: "",
+    header_text: "",
+    brand_name: "",
+    footer_text: "",
+    contact_email: "",
+    contact_phone: "",
+    contact_address: "",
+  });
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -115,6 +132,10 @@ function SiteSettingsPanel() {
         site_title: settings.site_title,
         header_text: settings.header_text,
         brand_name: settings.brand_name,
+        footer_text: settings.footer_text ?? "",
+        contact_email: settings.contact_email ?? "",
+        contact_phone: settings.contact_phone ?? "",
+        contact_address: settings.contact_address ?? "",
       });
     }
   }, [settings]);
@@ -160,6 +181,40 @@ function SiteSettingsPanel() {
           id="site_title"
           value={form.site_title}
           onChange={(e) => setForm({ ...form, site_title: e.target.value })}
+        />
+      </div>
+      <div className="space-y-1.5">
+        <Label htmlFor="footer_text">Footer text</Label>
+        <Input
+          id="footer_text"
+          value={form.footer_text}
+          onChange={(e) => setForm({ ...form, footer_text: e.target.value })}
+        />
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="space-y-1.5">
+          <Label htmlFor="contact_email">Contact email</Label>
+          <Input
+            id="contact_email"
+            value={form.contact_email}
+            onChange={(e) => setForm({ ...form, contact_email: e.target.value })}
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="contact_phone">Contact phone</Label>
+          <Input
+            id="contact_phone"
+            value={form.contact_phone}
+            onChange={(e) => setForm({ ...form, contact_phone: e.target.value })}
+          />
+        </div>
+      </div>
+      <div className="space-y-1.5">
+        <Label htmlFor="contact_address">Contact address</Label>
+        <Input
+          id="contact_address"
+          value={form.contact_address}
+          onChange={(e) => setForm({ ...form, contact_address: e.target.value })}
         />
       </div>
       <Button type="submit" disabled={saving}>
@@ -449,8 +504,29 @@ function PasswordPanel() {
 function AdsPanel() {
   const { data: settings } = useSiteSettings();
   const { data: ads = [] } = useBannerAds();
+  const { data: pages = [] } = usePages();
   const queryClient = useQueryClient();
   const [drafts, setDrafts] = useState<Record<string, Partial<BannerAd>>>({});
+
+  async function createAd() {
+    const { error } = await supabase
+      .from("banner_ads")
+      .insert({ title: "New ad space", placement: "feed" } as never);
+    if (error) {
+      toast.error("Could not create an ad space.");
+      return;
+    }
+    await queryClient.invalidateQueries({ queryKey: ["banner-ads"] });
+  }
+
+  async function removeAd(ad: BannerAd) {
+    const { error } = await supabase.from("banner_ads").delete().eq("id", ad.id);
+    if (error) {
+      toast.error("Could not delete this ad space.");
+      return;
+    }
+    await queryClient.invalidateQueries({ queryKey: ["banner-ads"] });
+  }
 
   async function toggleAdsEnabled(value: boolean) {
     const { error } = await supabase
@@ -500,6 +576,10 @@ function AdsPanel() {
         <Switch checked={settings?.ads_enabled !== false} onCheckedChange={toggleAdsEnabled} />
       </div>
 
+      <Button size="sm" onClick={createAd}>
+        Add new ad space
+      </Button>
+
       {ads.map((ad) => {
         const draft = { ...ad, ...drafts[ad.id] };
         return (
@@ -508,7 +588,50 @@ function AdsPanel() {
               <p className="truncate font-semibold">{ad.title}</p>
               <Switch checked={ad.is_active} onCheckedChange={() => toggleAd(ad)} />
             </div>
+            <AdImageField
+              ad={ad}
+              onUploaded={() => queryClient.invalidateQueries({ queryKey: ["banner-ads"] })}
+            />
             <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Placement</Label>
+                <select
+                  value={draft.placement}
+                  onChange={(e) =>
+                    setDrafts({
+                      ...drafts,
+                      [ad.id]: { ...drafts[ad.id], placement: e.target.value },
+                    })
+                  }
+                  className="h-9 w-full rounded-md border border-border bg-background px-2 text-sm"
+                  aria-label="Ad placement"
+                >
+                  <option value="top">Top full-width banner</option>
+                  <option value="sidebar">Right-side square</option>
+                  <option value="feed">In-feed (after every 3 posts)</option>
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Landing page</Label>
+                <select
+                  value={draft.page_slug ?? ""}
+                  onChange={(e) =>
+                    setDrafts({
+                      ...drafts,
+                      [ad.id]: { ...drafts[ad.id], page_slug: e.target.value || null },
+                    })
+                  }
+                  className="h-9 w-full rounded-md border border-border bg-background px-2 text-sm"
+                  aria-label="Landing page"
+                >
+                  <option value="">None (use link below)</option>
+                  {pages.map((page) => (
+                    <option key={page.id} value={page.slug}>
+                      {page.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
               <div className="space-y-1.5">
                 <Label className="text-xs">Headline</Label>
                 <Input
@@ -553,12 +676,245 @@ function AdsPanel() {
                 />
               </div>
             </div>
-            <Button size="sm" variant="secondary" onClick={() => saveAd(ad)}>
-              Save ad space
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" variant="secondary" onClick={() => saveAd(ad)}>
+                Save ad space
+              </Button>
+              <Button size="sm" variant="destructive" onClick={() => removeAd(ad)}>
+                Delete
+              </Button>
+            </div>
           </div>
         );
       })}
+    </div>
+  );
+}
+
+function AdImageField({ ad, onUploaded }: { ad: BannerAd; onUploaded: () => void }) {
+  const { data: url } = useSignedFile("ad-images", ad.image_path);
+  const [busy, setBusy] = useState(false);
+
+  async function upload(file: File) {
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Banner images must be 5 MB or smaller.");
+      return;
+    }
+    setBusy(true);
+    const ext = file.name.split(".").pop() ?? "jpg";
+    const path = `${ad.id}/${crypto.randomUUID()}.${ext}`;
+    const { error: uploadError } = await supabase.storage
+      .from("ad-images")
+      .upload(path, file, { contentType: file.type });
+    if (!uploadError) {
+      const { error } = await supabase
+        .from("banner_ads")
+        .update({ image_path: path } as never)
+        .eq("id", ad.id);
+      if (error) toast.error("Image uploaded but could not be linked.");
+      else toast.success("Banner image updated.");
+    } else {
+      toast.error("Could not upload that image.");
+    }
+    setBusy(false);
+    onUploaded();
+  }
+
+  async function clearImage() {
+    const { error } = await supabase
+      .from("banner_ads")
+      .update({ image_path: null } as never)
+      .eq("id", ad.id);
+    if (error) toast.error("Could not remove the image.");
+    onUploaded();
+  }
+
+  return (
+    <div className="space-y-2">
+      {url ? (
+        <img
+          src={url}
+          alt={`${ad.title} banner`}
+          className="max-h-36 w-full rounded-xl border border-border object-cover"
+        />
+      ) : null}
+      <div className="flex flex-wrap items-center gap-2">
+        <Input
+          type="file"
+          accept="image/png,image/jpeg,image/webp"
+          disabled={busy}
+          aria-label="Upload banner image"
+          className="max-w-xs"
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            event.target.value = "";
+            if (file) void upload(file);
+          }}
+        />
+        {ad.image_path ? (
+          <Button size="sm" variant="outline" onClick={clearImage}>
+            Remove image
+          </Button>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function PagesPanel() {
+  const { data: pages = [] } = usePages();
+  const queryClient = useQueryClient();
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [draft, setDraft] = useState<Partial<Page>>({});
+  const [saving, setSaving] = useState(false);
+
+  const active = pages.find((page) => page.id === activeId) ?? null;
+  const current = { ...(active ?? {}), ...draft } as Page;
+
+  async function createPage() {
+    const slug = window.prompt("Page web address (letters and dashes), e.g. machinery-promo");
+    if (!slug) return;
+    const clean = slug.trim().toLowerCase().replace(/[^a-z0-9-]/g, "-");
+    const { data, error } = await supabase
+      .from("pages")
+      .insert({ slug: clean, title: clean, content_html: "<p>New page</p>" } as never)
+      .select("id")
+      .single();
+    if (error) {
+      toast.error("Could not create the page. The address may already exist.");
+      return;
+    }
+    await queryClient.invalidateQueries({ queryKey: ["pages"] });
+    setActiveId((data as { id: string }).id);
+    setDraft({});
+  }
+
+  async function savePage() {
+    if (!active) return;
+    setSaving(true);
+    const { error } = await supabase
+      .from("pages")
+      .update({
+        title: current.title,
+        slug: current.slug,
+        content_html: current.content_html,
+        show_in_nav: current.show_in_nav,
+        is_published: current.is_published,
+        sort_order: current.sort_order,
+      } as never)
+      .eq("id", active.id);
+    setSaving(false);
+    if (error) {
+      toast.error("Could not save this page.");
+      return;
+    }
+    await queryClient.invalidateQueries({ queryKey: ["pages"] });
+    setDraft({});
+    toast.success("Page saved.");
+  }
+
+  async function deletePage() {
+    if (!active) return;
+    const { error } = await supabase.from("pages").delete().eq("id", active.id);
+    if (error) {
+      toast.error("Could not delete this page.");
+      return;
+    }
+    await queryClient.invalidateQueries({ queryKey: ["pages"] });
+    setActiveId(null);
+    setDraft({});
+  }
+
+  return (
+    <div className="mt-4 space-y-4">
+      <div className="flex flex-wrap items-center gap-2 rounded-2xl bg-card p-4 shadow-card">
+        {pages.map((page) => (
+          <button
+            key={page.id}
+            type="button"
+            onClick={() => {
+              setActiveId(page.id);
+              setDraft({});
+            }}
+            className={`rounded-full px-3 py-1 text-xs font-semibold ${
+              page.id === activeId ? "bg-primary text-primary-foreground" : "bg-accent"
+            }`}
+          >
+            {page.title}
+          </button>
+        ))}
+        <Button size="sm" onClick={createPage}>
+          New page
+        </Button>
+      </div>
+
+      {active ? (
+        <div className="space-y-4 rounded-2xl bg-card p-4 shadow-card">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Page title</Label>
+              <Input
+                value={current.title}
+                onChange={(e) => setDraft({ ...draft, title: e.target.value })}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Web address</Label>
+              <Input
+                value={current.slug}
+                onChange={(e) => setDraft({ ...draft, slug: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-6">
+            <label className="flex items-center gap-2 text-sm">
+              <Switch
+                checked={current.is_published}
+                onCheckedChange={(value) => setDraft({ ...draft, is_published: value })}
+              />
+              Published
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <Switch
+                checked={current.show_in_nav}
+                onCheckedChange={(value) => setDraft({ ...draft, show_in_nav: value })}
+              />
+              Show in menu
+            </label>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-xs">Page content</Label>
+            <RichTextEditor
+              value={current.content_html ?? ""}
+              onChange={(html) => setDraft({ ...draft, content_html: html })}
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-xs">HTML (advanced)</Label>
+            <Textarea
+              rows={4}
+              value={current.content_html ?? ""}
+              onChange={(e) => setDraft({ ...draft, content_html: e.target.value })}
+            />
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" disabled={saving} onClick={savePage}>
+              {saving ? "Saving…" : "Save page"}
+            </Button>
+            <Button size="sm" variant="destructive" onClick={deletePage}>
+              Delete page
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <p className="text-sm text-muted-foreground">
+          Choose a page to edit, or create a new landing page for your adverts.
+        </p>
+      )}
     </div>
   );
 }

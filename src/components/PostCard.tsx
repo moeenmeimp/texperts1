@@ -1,5 +1,14 @@
 import { Link } from "@tanstack/react-router";
-import { Building2, MapPin, MessageCircle, Phone, Pin, Sparkles, Trash2 } from "lucide-react";
+import {
+  Building2,
+  MapPin,
+  MessageCircle,
+  Phone,
+  Pin,
+  Send,
+  Sparkles,
+  Trash2,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { timeAgo, useSignedImage, whatsappLink, type Post } from "@/lib/data";
@@ -20,12 +29,14 @@ export function PostImage({ path, alt }: { path: string | null; alt: string }) {
 export function PostCard({
   post,
   isAdmin,
+  canMessage,
   onTogglePin,
   onDelete,
   showImage = true,
 }: {
   post: Post;
   isAdmin?: boolean | undefined;
+  canMessage?: boolean | undefined;
   onTogglePin?: (post: Post) => void;
   onDelete?: (post: Post) => void;
   showImage?: boolean;
@@ -115,6 +126,14 @@ export function PostCard({
             <MessageCircle className="h-4 w-4" /> Comments
           </Link>
         </Button>
+
+        {canMessage ? (
+          <Button asChild size="sm" variant="secondary">
+            <Link to="/chat" search={{ u: post.user_id, c: undefined }}>
+              <Send className="h-4 w-4" /> Message
+            </Link>
+          </Button>
+        ) : null}
 
         {isAdmin ? (
           <>

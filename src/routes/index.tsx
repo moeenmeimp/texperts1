@@ -58,8 +58,9 @@ function FeedPage() {
 
   const adsOn = settings?.ads_enabled !== false;
   const activeAds = useMemo(() => (adsOn ? ads.filter((ad) => ad.is_active) : []), [ads, adsOn]);
-  const feedAds = activeAds.filter((ad) => ad.placement !== "sidebar");
+  const topAds = activeAds.filter((ad) => ad.placement === "top");
   const sidebarAds = activeAds.filter((ad) => ad.placement === "sidebar");
+  const feedAds = activeAds.filter((ad) => ad.placement !== "sidebar" && ad.placement !== "top");
 
   const cities = useMemo(() => {
     const set = new Set<string>();
@@ -128,7 +129,7 @@ function FeedPage() {
   }) {
     const pinned = items.filter((post) => post.is_pinned);
     const rest = items.filter((post) => !post.is_pinned);
-    const ad = tone === "sell" ? feedAds[0] : feedAds[1];
+    const offset = tone === "sell" ? 0 : 1;
 
     return (
       <section className="min-w-0">
@@ -155,6 +156,7 @@ function FeedPage() {
                 key={post.id}
                 post={post}
                 isAdmin={isAdmin}
+                canMessage={!!user && user.id !== post.user_id}
                 onTogglePin={togglePin}
                 onDelete={deletePost}
               />
@@ -171,17 +173,22 @@ function FeedPage() {
               </Button>
             </div>
           ) : null}
-          {rest.map((post, index) => (
-            <div key={post.id} className="space-y-3">
-              <PostCard
-                post={post}
-                isAdmin={isAdmin}
-                onTogglePin={togglePin}
-                onDelete={deletePost}
-              />
-              {ad && index === 2 ? <BannerAdSlot ad={ad} /> : null}
-            </div>
-          ))}
+          {rest.map((post, index) => {
+            const showAd = feedAds.length > 0 && (index + 1) % 3 === 0;
+            const ad = feedAds[(Math.floor(index / 3) + offset) % feedAds.length];
+            return (
+              <div key={post.id} className="space-y-3">
+                <PostCard
+                  post={post}
+                  isAdmin={isAdmin}
+                  canMessage={!!user && user.id !== post.user_id}
+                  onTogglePin={togglePin}
+                  onDelete={deletePost}
+                />
+                {showAd && ad ? <BannerAdSlot ad={ad} /> : null}
+              </div>
+            );
+          })}
         </div>
       </section>
     );
@@ -195,6 +202,14 @@ function FeedPage() {
           <Link to="/profile" className="font-semibold underline">
             Complete now
           </Link>
+        </div>
+      ) : null}
+
+      {topAds.length > 0 ? (
+        <div className="mb-3 space-y-3">
+          {topAds.map((ad) => (
+            <BannerAdSlot key={ad.id} ad={ad} variant="wide" />
+          ))}
         </div>
       ) : null}
 
@@ -262,7 +277,7 @@ function FeedPage() {
                 Promotions
               </p>
               {sidebarAds.map((ad) => (
-                <BannerAdSlot key={ad.id} ad={ad} />
+                <BannerAdSlot key={ad.id} ad={ad} variant="square" />
               ))}
             </aside>
           ) : null}
