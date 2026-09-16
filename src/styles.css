@@ -249,3 +249,22 @@
     transform: translateX(-50%);
   }
 }
+
+.prose-page h2 {
+  font-size: 1.125rem;
+  font-weight: 700;
+  margin-top: 1.25rem;
+  margin-bottom: 0.5rem;
+}
+.prose-page p {
+  margin-bottom: 0.75rem;
+}
+.prose-page ul {
+  list-style: disc;
+  padding-left: 1.25rem;
+  margin-bottom: 0.75rem;
+}
+.prose-page a {
+  color: var(--primary);
+  text-decoration: underline;
+}
