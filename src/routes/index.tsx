@@ -59,8 +59,33 @@ function FeedPage() {
   const adsOn = settings?.ads_enabled !== false;
   const activeAds = useMemo(() => (adsOn ? ads.filter((ad) => ad.is_active) : []), [ads, adsOn]);
   const topAds = activeAds.filter((ad) => ad.placement === "top");
-  const sidebarAds = activeAds.filter((ad) => ad.placement === "sidebar");
-  const feedAds = activeAds.filter((ad) => ad.placement !== "sidebar" && ad.placement !== "top");
+  const sidebarAds = activeAds
+    .filter((ad) => ad.placement === "sidebar")
+    .slice()
+    .sort((a, b) => a.sort_order - b.sort_order);
+  const feedAds = activeAds
+    .filter((ad) => ad.placement !== "sidebar" && ad.placement !== "top" && ad.placement !== "footer")
+    .slice()
+    .sort((a, b) => a.sort_order - b.sort_order);
+  const globalFrequency = Math.max(1, settings?.ads_feed_frequency ?? 3);
+  const positionAds = feedAds.filter((ad) => ad.feed_mode === "position" && ad.feed_position);
+  const frequencyAds = feedAds.filter((ad) => ad.feed_mode === "frequency" && ad.feed_every);
+  const autoAds = feedAds.filter((ad) => ad.feed_mode !== "position" && ad.feed_mode !== "frequency");
+
+  function adsAfterPost(postNumber: number, offset: number) {
+    const out = positionAds.filter((ad) => ad.feed_position === postNumber);
+    frequencyAds.forEach((ad) => {
+      const every = Math.max(1, ad.feed_every ?? 1);
+      if (postNumber % every === 0) out.push(ad);
+    });
+    if (autoAds.length > 0 && postNumber % globalFrequency === 0) {
+      const slot = Math.floor(postNumber / globalFrequency) - 1 + offset;
+      const picked = autoAds[((slot % autoAds.length) + autoAds.length) % autoAds.length];
+      if (picked) out.push(picked);
+    }
+    return out;
+  }
+
 
   const cities = useMemo(() => {
     const set = new Set<string>();
