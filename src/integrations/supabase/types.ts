@@ -17,9 +17,14 @@ export type Database = {
       banner_ads: {
         Row: {
           accent: string
+          ad_type: string
           created_at: string
           cta_text: string
           cta_url: string
+          feed_every: number | null
+          feed_mode: string
+          feed_position: number | null
+          html_code: string
           id: string
           image_path: string | null
           is_active: boolean
@@ -31,9 +36,14 @@ export type Database = {
         }
         Insert: {
           accent?: string
+          ad_type?: string
           created_at?: string
           cta_text?: string
           cta_url?: string
+          feed_every?: number | null
+          feed_mode?: string
+          feed_position?: number | null
+          html_code?: string
           id?: string
           image_path?: string | null
           is_active?: boolean
@@ -45,9 +55,14 @@ export type Database = {
         }
         Update: {
           accent?: string
+          ad_type?: string
           created_at?: string
           cta_text?: string
           cta_url?: string
+          feed_every?: number | null
+          feed_mode?: string
+          feed_position?: number | null
+          html_code?: string
           id?: string
           image_path?: string | null
           is_active?: boolean
@@ -327,6 +342,7 @@ export type Database = {
       site_settings: {
         Row: {
           ads_enabled: boolean
+          ads_feed_frequency: number
           brand_name: string
           contact_address: string
           contact_email: string
@@ -340,6 +356,7 @@ export type Database = {
         }
         Insert: {
           ads_enabled?: boolean
+          ads_feed_frequency?: number
           brand_name?: string
           contact_address?: string
           contact_email?: string
@@ -353,6 +370,7 @@ export type Database = {
         }
         Update: {
           ads_enabled?: boolean
+          ads_feed_frequency?: number
           brand_name?: string
           contact_address?: string
           contact_email?: string

@@ -13,10 +13,11 @@ import {
 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { MarketTicker } from "@/components/MarketTicker";
+import { BannerAdSlot } from "@/components/BannerAdSlot";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useColorMode, usePalette } from "@/lib/theme";
-import { useIsAdmin, usePages, useSession, useSiteSettings } from "@/lib/data";
+import { useBannerAds, useIsAdmin, usePages, useSession, useSiteSettings } from "@/lib/data";
 
 function NavItem({
   to,
@@ -57,6 +58,11 @@ export function AppShell({ children }: { children: ReactNode }) {
   }, [settings?.site_title]);
 
   const brand = settings?.brand_name ?? "TradeHub";
+  const { data: allAds = [] } = useBannerAds();
+  const footerAds =
+    settings?.ads_enabled === false
+      ? []
+      : allAds.filter((ad) => ad.is_active && ad.placement === "footer");
 
   const links: Array<{ to: string; label: string; icon: typeof Home }> = [
     { to: "/", label: "Feed", icon: Home },
@@ -178,7 +184,16 @@ export function AppShell({ children }: { children: ReactNode }) {
         ) : null}
       </nav>
 
+      {footerAds.length > 0 ? (
+        <div className="mx-auto w-full max-w-6xl space-y-3 px-3 pb-4">
+          {footerAds.map((ad) => (
+            <BannerAdSlot key={ad.id} ad={ad} variant="wide" />
+          ))}
+        </div>
+      ) : null}
+
       <footer className="border-t border-border px-3 py-6 text-center text-xs text-muted-foreground">
+
         <p className="font-semibold text-foreground">{brand}</p>
         <p className="mt-1">
           {settings?.footer_text ?? "B2B textile & commodity trading marketplace"}
