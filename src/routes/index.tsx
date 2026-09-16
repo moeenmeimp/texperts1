@@ -199,8 +199,7 @@ function FeedPage() {
             </div>
           ) : null}
           {rest.map((post, index) => {
-            const showAd = feedAds.length > 0 && (index + 1) % 3 === 0;
-            const ad = feedAds[(Math.floor(index / 3) + offset) % feedAds.length];
+            const slotAds = adsAfterPost(index + 1, offset);
             return (
               <div key={post.id} className="space-y-3">
                 <PostCard
@@ -210,7 +209,9 @@ function FeedPage() {
                   onTogglePin={togglePin}
                   onDelete={deletePost}
                 />
-                {showAd && ad ? <BannerAdSlot ad={ad} /> : null}
+                {slotAds.map((ad, i) => (
+                  <BannerAdSlot key={`${post.id}-${ad.id}-${i}`} ad={ad} />
+                ))}
               </div>
             );
           })}
