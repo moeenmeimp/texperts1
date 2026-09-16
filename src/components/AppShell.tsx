@@ -58,6 +58,11 @@ export function AppShell({ children }: { children: ReactNode }) {
   }, [settings?.site_title]);
 
   const brand = settings?.brand_name ?? "TradeHub";
+  const { data: allAds = [] } = useBannerAds();
+  const footerAds =
+    settings?.ads_enabled === false
+      ? []
+      : allAds.filter((ad) => ad.is_active && ad.placement === "footer");
 
   const links: Array<{ to: string; label: string; icon: typeof Home }> = [
     { to: "/", label: "Feed", icon: Home },
