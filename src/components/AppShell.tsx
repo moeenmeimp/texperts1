@@ -178,7 +178,16 @@ export function AppShell({ children }: { children: ReactNode }) {
         ) : null}
       </nav>
 
+      {footerAds.length > 0 ? (
+        <div className="mx-auto w-full max-w-6xl space-y-3 px-3 pb-4">
+          {footerAds.map((ad) => (
+            <BannerAdSlot key={ad.id} ad={ad} variant="wide" />
+          ))}
+        </div>
+      ) : null}
+
       <footer className="border-t border-border px-3 py-6 text-center text-xs text-muted-foreground">
+
         <p className="font-semibold text-foreground">{brand}</p>
         <p className="mt-1">
           {settings?.footer_text ?? "B2B textile & commodity trading marketplace"}
