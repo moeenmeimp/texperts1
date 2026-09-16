@@ -62,6 +62,7 @@ export interface SiteSettings {
   brand_name: string;
   theme: string;
   ads_enabled: boolean;
+  ads_feed_frequency: number;
   footer_text: string;
   contact_email: string;
   contact_phone: string;
@@ -80,6 +81,11 @@ export interface BannerAd {
   sort_order: number;
   image_path: string | null;
   page_slug: string | null;
+  ad_type: string;
+  html_code: string;
+  feed_mode: string;
+  feed_position: number | null;
+  feed_every: number | null;
 }
 
 export interface Page {
