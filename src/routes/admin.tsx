@@ -675,6 +675,79 @@ function AdsPanel() {
                   }
                 />
               </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Position / order number</Label>
+                <Input
+                  type="number"
+                  value={draft.sort_order ?? 0}
+                  onChange={(e) =>
+                    setDrafts({
+                      ...drafts,
+                      [ad.id]: { ...drafts[ad.id], sort_order: Number(e.target.value) || 0 },
+                    })
+                  }
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  Lower numbers appear first (side panel stacking order).
+                </p>
+              </div>
+              {draft.placement === "feed" ? (
+                <>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">In-feed rule</Label>
+                    <select
+                      value={draft.feed_mode ?? "auto"}
+                      onChange={(e) =>
+                        setDrafts({
+                          ...drafts,
+                          [ad.id]: { ...drafts[ad.id], feed_mode: e.target.value },
+                        })
+                      }
+                      className="h-9 w-full rounded-md border border-border bg-background px-2 text-sm"
+                      aria-label="In-feed rule"
+                    >
+                      <option value="auto">Automatic (use global frequency)</option>
+                      <option value="position">Show after a specific post number</option>
+                      <option value="frequency">Repeat every N posts</option>
+                    </select>
+                  </div>
+                  {draft.feed_mode === "position" ? (
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Show after post #</Label>
+                      <Input
+                        type="number"
+                        min={1}
+                        value={draft.feed_position ?? 1}
+                        onChange={(e) =>
+                          setDrafts({
+                            ...drafts,
+                            [ad.id]: {
+                              ...drafts[ad.id],
+                              feed_position: Number(e.target.value) || 1,
+                            },
+                          })
+                        }
+                      />
+                    </div>
+                  ) : null}
+                  {draft.feed_mode === "frequency" ? (
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Repeat every N posts</Label>
+                      <Input
+                        type="number"
+                        min={1}
+                        value={draft.feed_every ?? 4}
+                        onChange={(e) =>
+                          setDrafts({
+                            ...drafts,
+                            [ad.id]: { ...drafts[ad.id], feed_every: Number(e.target.value) || 1 },
+                          })
+                        }
+                      />
+                    </div>
+                  ) : null}
+                </>
+              ) : null}
             </div>
             <div className="flex flex-wrap gap-2">
               <Button size="sm" variant="secondary" onClick={() => saveAd(ad)}>
