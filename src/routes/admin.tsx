@@ -507,6 +507,24 @@ function AdsPanel() {
   const { data: pages = [] } = usePages();
   const queryClient = useQueryClient();
   const [drafts, setDrafts] = useState<Record<string, Partial<BannerAd>>>({});
+  const [frequency, setFrequency] = useState(3);
+
+  useEffect(() => {
+    if (settings?.ads_feed_frequency) setFrequency(settings.ads_feed_frequency);
+  }, [settings?.ads_feed_frequency]);
+
+  async function saveFrequency() {
+    const { error } = await supabase
+      .from("site_settings")
+      .update({ ads_feed_frequency: Math.max(1, frequency) } as never)
+      .eq("id", 1);
+    if (error) {
+      toast.error("Could not save the frequency.");
+      return;
+    }
+    await queryClient.invalidateQueries({ queryKey: ["site-settings"] });
+    toast.success("In-feed frequency saved.");
+  }
 
   async function createAd() {
     const { error } = await supabase
