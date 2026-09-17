@@ -588,10 +588,47 @@ function AdsPanel() {
               <p className="truncate font-semibold">{ad.title}</p>
               <Switch checked={ad.is_active} onCheckedChange={() => toggleAd(ad)} />
             </div>
-            <AdImageField
-              ad={ad}
-              onUploaded={() => queryClient.invalidateQueries({ queryKey: ["banner-ads"] })}
-            />
+            <div className="space-y-1.5">
+              <Label className="text-xs">Ad type</Label>
+              <select
+                value={draft.ad_type ?? "banner"}
+                onChange={(e) =>
+                  setDrafts({ ...drafts, [ad.id]: { ...drafts[ad.id], ad_type: e.target.value } })
+                }
+                className="h-9 w-full rounded-md border border-border bg-background px-2 text-sm"
+                aria-label="Ad type"
+              >
+                <option value="banner">Image / text banner</option>
+                <option value="html">Affiliate / custom HTML code</option>
+              </select>
+            </div>
+
+            {draft.ad_type === "html" ? (
+              <div className="space-y-1.5">
+                <Label className="text-xs">Ad code (HTML / JavaScript)</Label>
+                <Textarea
+                  rows={6}
+                  value={draft.html_code ?? ""}
+                  placeholder="<script>...</script> or affiliate banner code"
+                  onChange={(e) =>
+                    setDrafts({
+                      ...drafts,
+                      [ad.id]: { ...drafts[ad.id], html_code: e.target.value },
+                    })
+                  }
+                  className="font-mono text-xs"
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  Warning: pasted code runs on your live site. Only paste code from networks you
+                  trust.
+                </p>
+              </div>
+            ) : (
+              <AdImageField
+                ad={ad}
+                onUploaded={() => queryClient.invalidateQueries({ queryKey: ["banner-ads"] })}
+              />
+            )}
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label className="text-xs">Placement</Label>
@@ -606,9 +643,10 @@ function AdsPanel() {
                   className="h-9 w-full rounded-md border border-border bg-background px-2 text-sm"
                   aria-label="Ad placement"
                 >
-                  <option value="top">Top full-width banner</option>
-                  <option value="sidebar">Right-side square</option>
-                  <option value="feed">In-feed (after every 3 posts)</option>
+                  <option value="top">Header full-width banner</option>
+                  <option value="sidebar">Right-side panel card</option>
+                  <option value="feed">In-feed</option>
+                  <option value="footer">Footer full-width banner</option>
                 </select>
               </div>
               <div className="space-y-1.5">
