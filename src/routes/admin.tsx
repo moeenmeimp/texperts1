@@ -507,6 +507,24 @@ function AdsPanel() {
   const { data: pages = [] } = usePages();
   const queryClient = useQueryClient();
   const [drafts, setDrafts] = useState<Record<string, Partial<BannerAd>>>({});
+  const [frequency, setFrequency] = useState(3);
+
+  useEffect(() => {
+    if (settings?.ads_feed_frequency) setFrequency(settings.ads_feed_frequency);
+  }, [settings?.ads_feed_frequency]);
+
+  async function saveFrequency() {
+    const { error } = await supabase
+      .from("site_settings")
+      .update({ ads_feed_frequency: Math.max(1, frequency) } as never)
+      .eq("id", 1);
+    if (error) {
+      toast.error("Could not save the frequency.");
+      return;
+    }
+    await queryClient.invalidateQueries({ queryKey: ["site-settings"] });
+    toast.success("In-feed frequency saved.");
+  }
 
   async function createAd() {
     const { error } = await supabase
@@ -568,12 +586,32 @@ function AdsPanel() {
 
   return (
     <div className="mt-4 space-y-4">
-      <div className="flex items-center justify-between rounded-2xl bg-card p-4 shadow-card">
-        <div>
-          <h3 className="font-semibold">Show ad spaces</h3>
-          <p className="text-sm text-muted-foreground">Hide every promotional slot at once.</p>
+      <div className="space-y-3 rounded-2xl bg-card p-4 shadow-card">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="font-semibold">Show ad spaces</h3>
+            <p className="text-sm text-muted-foreground">Hide every promotional slot at once.</p>
+          </div>
+          <Switch checked={settings?.ads_enabled !== false} onCheckedChange={toggleAdsEnabled} />
         </div>
-        <Switch checked={settings?.ads_enabled !== false} onCheckedChange={toggleAdsEnabled} />
+        <div className="space-y-1.5">
+          <Label className="text-xs">Default in-feed frequency (every N posts)</Label>
+          <div className="flex gap-2">
+            <Input
+              type="number"
+              min={1}
+              value={frequency}
+              onChange={(e) => setFrequency(Number(e.target.value) || 1)}
+              className="max-w-32"
+            />
+            <Button size="sm" variant="secondary" onClick={saveFrequency}>
+              Save
+            </Button>
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            Used by in-feed ads set to “Automatic”.
+          </p>
+        </div>
       </div>
 
       <Button size="sm" onClick={createAd}>
@@ -588,10 +626,47 @@ function AdsPanel() {
               <p className="truncate font-semibold">{ad.title}</p>
               <Switch checked={ad.is_active} onCheckedChange={() => toggleAd(ad)} />
             </div>
-            <AdImageField
-              ad={ad}
-              onUploaded={() => queryClient.invalidateQueries({ queryKey: ["banner-ads"] })}
-            />
+            <div className="space-y-1.5">
+              <Label className="text-xs">Ad type</Label>
+              <select
+                value={draft.ad_type ?? "banner"}
+                onChange={(e) =>
+                  setDrafts({ ...drafts, [ad.id]: { ...drafts[ad.id], ad_type: e.target.value } })
+                }
+                className="h-9 w-full rounded-md border border-border bg-background px-2 text-sm"
+                aria-label="Ad type"
+              >
+                <option value="banner">Image / text banner</option>
+                <option value="html">Affiliate / custom HTML code</option>
+              </select>
+            </div>
+
+            {draft.ad_type === "html" ? (
+              <div className="space-y-1.5">
+                <Label className="text-xs">Ad code (HTML / JavaScript)</Label>
+                <Textarea
+                  rows={6}
+                  value={draft.html_code ?? ""}
+                  placeholder="<script>...</script> or affiliate banner code"
+                  onChange={(e) =>
+                    setDrafts({
+                      ...drafts,
+                      [ad.id]: { ...drafts[ad.id], html_code: e.target.value },
+                    })
+                  }
+                  className="font-mono text-xs"
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  Warning: pasted code runs on your live site. Only paste code from networks you
+                  trust.
+                </p>
+              </div>
+            ) : (
+              <AdImageField
+                ad={ad}
+                onUploaded={() => queryClient.invalidateQueries({ queryKey: ["banner-ads"] })}
+              />
+            )}
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label className="text-xs">Placement</Label>
@@ -606,9 +681,10 @@ function AdsPanel() {
                   className="h-9 w-full rounded-md border border-border bg-background px-2 text-sm"
                   aria-label="Ad placement"
                 >
-                  <option value="top">Top full-width banner</option>
-                  <option value="sidebar">Right-side square</option>
-                  <option value="feed">In-feed (after every 3 posts)</option>
+                  <option value="top">Header full-width banner</option>
+                  <option value="sidebar">Right-side panel card</option>
+                  <option value="feed">In-feed</option>
+                  <option value="footer">Footer full-width banner</option>
                 </select>
               </div>
               <div className="space-y-1.5">
