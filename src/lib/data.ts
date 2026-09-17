@@ -495,3 +495,70 @@ export async function getOrCreateConversation(meId: string, otherId: string) {
   if (error) throw error;
   return data.id as string;
 }
+
+/* ---------------- polls ---------------- */
+
+export interface PollOption {
+  id: string;
+  poll_id: string;
+  label: string;
+  sort_order: number;
+}
+
+export interface Poll {
+  id: string;
+  question: string;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface PollVote {
+  id: string;
+  poll_id: string;
+  option_id: string;
+  user_id: string;
+}
+
+export interface ActivePoll {
+  poll: Poll;
+  options: PollOption[];
+  votes: PollVote[];
+}
+
+export function useActivePoll() {
+  return useQuery({
+    queryKey: ["active-poll"],
+    queryFn: async (): Promise<ActivePoll | null> => {
+      const { data: poll, error } = await db
+        .from("polls")
+        .select("*")
+        .eq("is_active", true)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      if (!poll) return null;
+
+      const [{ data: options }, { data: votes }] = await Promise.all([
+        db.from("poll_options").select("*").eq("poll_id", poll.id).order("sort_order"),
+        db.from("poll_votes").select("*").eq("poll_id", poll.id),
+      ]);
+
+      return {
+        poll: poll as Poll,
+        options: (options ?? []) as PollOption[],
+        votes: (votes ?? []) as PollVote[],
+      };
+    },
+    staleTime: 30_000,
+  });
+}
+
+export async function castPollVote(pollId: string, optionId: string, userId: string) {
+  const { error } = await db
+    .from("poll_votes")
+    .upsert({ poll_id: pollId, option_id: optionId, user_id: userId } as never, {
+      onConflict: "poll_id,user_id",
+    });
+  if (error) throw error;
+}
