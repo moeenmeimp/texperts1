@@ -568,12 +568,32 @@ function AdsPanel() {
 
   return (
     <div className="mt-4 space-y-4">
-      <div className="flex items-center justify-between rounded-2xl bg-card p-4 shadow-card">
-        <div>
-          <h3 className="font-semibold">Show ad spaces</h3>
-          <p className="text-sm text-muted-foreground">Hide every promotional slot at once.</p>
+      <div className="space-y-3 rounded-2xl bg-card p-4 shadow-card">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="font-semibold">Show ad spaces</h3>
+            <p className="text-sm text-muted-foreground">Hide every promotional slot at once.</p>
+          </div>
+          <Switch checked={settings?.ads_enabled !== false} onCheckedChange={toggleAdsEnabled} />
         </div>
-        <Switch checked={settings?.ads_enabled !== false} onCheckedChange={toggleAdsEnabled} />
+        <div className="space-y-1.5">
+          <Label className="text-xs">Default in-feed frequency (every N posts)</Label>
+          <div className="flex gap-2">
+            <Input
+              type="number"
+              min={1}
+              value={frequency}
+              onChange={(e) => setFrequency(Number(e.target.value) || 1)}
+              className="max-w-32"
+            />
+            <Button size="sm" variant="secondary" onClick={saveFrequency}>
+              Save
+            </Button>
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            Used by in-feed ads set to “Automatic”.
+          </p>
+        </div>
       </div>
 
       <Button size="sm" onClick={createAd}>
